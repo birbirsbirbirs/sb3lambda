@@ -1,0 +1,81 @@
+plugins {
+	id 'java'
+	id 'org.springframework.boot' version '3.0.5'
+	id 'io.spring.dependency-management' version '1.1.3'
+	id "com.github.johnrengelman.shadow" version "8.1.1"
+}
+
+group = 'co.pitam'
+version = '0.0.1-SNAPSHOT'
+
+java {
+	sourceCompatibility = '17'
+}
+
+configurations {
+	compileOnly {
+		extendsFrom annotationProcessor
+	}
+}
+
+repositories {
+	mavenCentral()
+}
+
+ext {
+	set('springCloudVersion', "2022.0.4")
+}
+
+dependencies {
+	// https://mvnrepository.com/artifact/org.springframework.cloud/spring-cloud-function-web
+	implementation 'org.springframework.cloud:spring-cloud-function-web'
+// https://mvnrepository.com/artifact/org.springframework.cloud/spring-cloud-function-adapter-aws
+	implementation 'org.springframework.cloud:spring-cloud-function-adapter-aws'
+
+	implementation 'org.springframework.boot:spring-boot-starter-actuator'
+	implementation 'org.springframework.boot:spring-boot-starter-web'
+	implementation 'io.micrometer:micrometer-tracing-bridge-brave'
+	implementation 'org.springframework.cloud:spring-cloud-function-web'
+	compileOnly 'org.projectlombok:lombok'
+	annotationProcessor 'org.projectlombok:lombok'
+	testImplementation 'org.springframework.boot:spring-boot-starter-test'
+}
+
+dependencyManagement {
+	imports {
+		mavenBom "org.springframework.cloud:spring-cloud-dependencies:${springCloudVersion}"
+	}
+}
+
+tasks.named('test') {
+	useJUnitPlatform()
+}
+
+import com.github.jengelman.gradle.plugins.shadow.transformers.*
+
+jar{
+	manifest {
+		attributes 'Main-class':'co.pitam.sb3lambda.Sb3lambdaApplication'
+	}
+}
+
+assemble.dependsOn = [shadowJar]
+
+shadowJar {
+	archiveClassifier = 'aws'
+	dependencies {
+		exclude(
+				dependency("org.springframework.cloud:spring-cloud-function-web:4.0.5"))
+	}
+	// Required for Spring
+	mergeServiceFiles()
+	append 'META-INF/spring.handlers'
+	append 'META-INF/spring.schemas'
+	append 'META-INF/spring.tooling'
+	append 'META-INF/spring/org.springframework.boot.autoconfigure.AutoConfiguration.imports'
+	append 'META-INF/spring/org.springframework.boot.actuate.autoconfigure.web.ManagementContextConfiguration.imports'
+	transform(PropertiesFileTransformer) {
+		paths = ['META-INF/spring.factories']
+		mergeStrategy = "append"
+	}
+}
